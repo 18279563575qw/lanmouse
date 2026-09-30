@@ -1,0 +1,15 @@
+# 构建产物与本机配置，不入库
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+.gradle/
+build/
+*.iml
+.idea/
+*.log
+
+# 说明：windows/LanMouseServer.exe、dist/ 下的 APK 和 zip 是刻意保留的已编译产物，
+# 方便朋友直接下载；如果你只想上传源码，取消下面两行的注释再提交。
+# windows/LanMouseServer.exe
+# dist/

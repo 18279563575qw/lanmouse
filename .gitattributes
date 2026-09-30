@@ -1,0 +1,12 @@
+# 二进制产物：不要做任何换行或编码转换
+*.exe      binary
+*.dll      binary
+*.apk      binary
+*.zip      binary
+*.jar      binary
+*.keystore binary
+*.png      binary
+
+# Windows 批处理固定使用 CRLF：从 GitHub 下载 ZIP 后 cmd 才能正确解析
+*.bat text eol=crlf
+*.cmd text eol=crlf
