@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Looper;
@@ -26,7 +27,10 @@ public class TouchpadView extends View {
     private final Paint backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint centerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF bounds = new RectF();
+    private final Path clipPath = new Path();
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private Listener listener;
@@ -44,6 +48,10 @@ public class TouchpadView extends View {
     private float lastCentroidY;
     private float scrollAccumulator;
     private boolean dragging;
+    private boolean hapticsEnabled = true;
+    private boolean touchActive;
+    private float touchX;
+    private float touchY;
 
     private final Runnable dragStartRunnable = new Runnable() {
         @Override
@@ -52,7 +60,7 @@ public class TouchpadView extends View {
                 return;
             }
             dragging = true;
-            performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+            dispatchHaptic(HapticFeedbackConstants.LONG_PRESS);
             if (listener != null) {
                 listener.onButton("left", "down");
             }
@@ -67,6 +75,7 @@ public class TouchpadView extends View {
     private void initialize() {
         setFocusable(true);
         setClickable(true);
+        setHapticFeedbackEnabled(true);
         touchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         float density = getResources().getDisplayMetrics().density;
         scrollStep = 20f * density;
@@ -76,6 +85,8 @@ public class TouchpadView extends View {
         borderPaint.setStrokeWidth(Math.max(1f, density));
         gridPaint.setStyle(Paint.Style.STROKE);
         gridPaint.setStrokeWidth(Math.max(1f, density));
+        centerPaint.setStyle(Paint.Style.STROKE);
+        centerPaint.setStrokeWidth(Math.max(1f, density));
     }
 
     public void setListener(Listener listener) {
@@ -83,16 +94,22 @@ public class TouchpadView extends View {
     }
 
     @Override
+    public void setHapticFeedbackEnabled(boolean enabled) {
+        super.setHapticFeedbackEnabled(enabled);
+        hapticsEnabled = enabled;
+    }
+
+    @Override
     public void setEnabled(boolean enabled) {
         boolean wasEnabled = isEnabled();
         super.setEnabled(enabled);
         if (wasEnabled && !enabled) {
-            // 被禁用后收不到 ACTION_UP，这里补发左键抬起，避免拖拽中断导致按键一直按下。
             if (dragging && listener != null) {
                 listener.onButton("left", "up");
             }
             resetTouchState();
         }
+        invalidate();
     }
 
     public void setSensitivity(float sensitivity) {
@@ -102,6 +119,7 @@ public class TouchpadView extends View {
     public float getSensitivity() {
         return sensitivity;
     }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (!isEnabled()) {
@@ -114,6 +132,9 @@ public class TouchpadView extends View {
                 activePointerId = event.getPointerId(0);
                 lastX = event.getX(0);
                 lastY = event.getY(0);
+                touchX = lastX;
+                touchY = lastY;
+                touchActive = true;
                 movedDistance = 0f;
                 downTime = event.getEventTime();
                 twoFingerActive = false;
@@ -125,6 +146,7 @@ public class TouchpadView extends View {
                 if (getParent() != null) {
                     getParent().requestDisallowInterceptTouchEvent(true);
                 }
+                invalidate();
                 return true;
 
             case MotionEvent.ACTION_POINTER_DOWN:
@@ -135,6 +157,10 @@ public class TouchpadView extends View {
                     twoFingerDownTime = event.getEventTime();
                     lastCentroidY = centroidY(event);
                     scrollAccumulator = 0f;
+                    touchX = centroidX(event);
+                    touchY = lastCentroidY;
+                    touchActive = true;
+                    invalidate();
                 }
                 return true;
 
@@ -146,12 +172,18 @@ public class TouchpadView extends View {
                         twoFingerMoved = twoFingerMoved || Math.abs(delta) > touchSlop * 0.25f;
                         scrollAccumulator += delta;
                         lastCentroidY = centroid;
+                        touchX = centroidX(event);
+                        touchY = centroid;
+                        invalidate();
 
                         while (Math.abs(scrollAccumulator) >= scrollStep) {
                             int clicks = (int) (scrollAccumulator / scrollStep);
                             scrollAccumulator -= clicks * scrollStep;
-                            if (listener != null && clicks != 0) {
-                                listener.onScroll(clicks * 120);
+                            if (clicks != 0) {
+                                if (listener != null) {
+                                    listener.onScroll(clicks * 120);
+                                }
+                                dispatchHaptic(HapticFeedbackConstants.CLOCK_TICK);
                             }
                         }
                     }
@@ -169,7 +201,10 @@ public class TouchpadView extends View {
                 float dy = y - lastY;
                 lastX = x;
                 lastY = y;
+                touchX = x;
+                touchY = y;
                 movedDistance += Math.abs(dx) + Math.abs(dy);
+                invalidate();
 
                 if (!dragging && movedDistance > touchSlop) {
                     handler.removeCallbacks(dragStartRunnable);
@@ -193,14 +228,17 @@ public class TouchpadView extends View {
                     }
                 } else if (twoFingerActive) {
                     long twoFingerDuration = event.getEventTime() - twoFingerDownTime;
-                    if (!twoFingerMoved && twoFingerDuration < 350 && movedDistance < touchSlop * 2f) {
+                    if (!twoFingerMoved && twoFingerDuration < 350
+                            && movedDistance < touchSlop * 2f) {
                         performClick();
+                        dispatchHaptic(HapticFeedbackConstants.CONTEXT_CLICK);
                         if (listener != null) {
                             listener.onButton("right", "click");
                         }
                     }
                 } else if (duration < 320 && movedDistance < touchSlop) {
                     performClick();
+                    dispatchHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
                     if (listener != null) {
                         listener.onButton("left", "click");
                     }
@@ -221,10 +259,25 @@ public class TouchpadView extends View {
                 return true;
         }
     }
+
     @Override
     public boolean performClick() {
         super.performClick();
         return true;
+    }
+
+    private void dispatchHaptic(int feedbackConstant) {
+        if (hapticsEnabled) {
+            performHapticFeedback(feedbackConstant);
+        }
+    }
+
+    private float centroidX(MotionEvent event) {
+        float sum = 0f;
+        for (int i = 0; i < event.getPointerCount(); i++) {
+            sum += event.getX(i);
+        }
+        return sum / event.getPointerCount();
     }
 
     private float centroidY(MotionEvent event) {
@@ -242,9 +295,11 @@ public class TouchpadView extends View {
         twoFingerMoved = false;
         dragging = false;
         scrollAccumulator = 0f;
+        touchActive = false;
         if (getParent() != null) {
             getParent().requestDisallowInterceptTouchEvent(false);
         }
+        invalidate();
     }
 
     @Override
@@ -263,29 +318,68 @@ public class TouchpadView extends View {
         float density = getResources().getDisplayMetrics().density;
         float inset = density * 1.5f;
         bounds.set(inset, inset, getWidth() - inset, getHeight() - inset);
-        float radius = density * 22f;
+        float radius = 18f * density;
 
         boolean enabled = isEnabled();
-        backgroundPaint.setColor(enabled ? Color.rgb(27, 31, 39) : Color.rgb(25, 27, 31));
+        backgroundPaint.setColor(getContext().getColor(
+                enabled ? R.color.touchpad : R.color.touchpad_disabled));
         canvas.drawRoundRect(bounds, radius, radius, backgroundPaint);
 
-        borderPaint.setColor(enabled ? Color.rgb(63, 70, 83) : Color.rgb(46, 49, 56));
-        canvas.drawRoundRect(bounds, radius, radius, borderPaint);
+        clipPath.reset();
+        clipPath.addRoundRect(bounds, radius, radius, Path.Direction.CW);
+        canvas.save();
+        canvas.clipPath(clipPath);
 
-        gridPaint.setColor(enabled ? Color.argb(30, 180, 195, 215) : Color.argb(18, 180, 195, 215));
-        float step = 34f * density;
+        if (enabled && touchActive) {
+            int accent = getContext().getColor(R.color.accent);
+            glowPaint.setStyle(Paint.Style.FILL);
+            glowPaint.setColor(colorWithAlpha(accent, 0.045f));
+            canvas.drawCircle(touchX, touchY, density * 76f, glowPaint);
+            glowPaint.setColor(colorWithAlpha(accent, 0.065f));
+            canvas.drawCircle(touchX, touchY, density * 54f, glowPaint);
+            glowPaint.setColor(colorWithAlpha(accent, 0.09f));
+            canvas.drawCircle(touchX, touchY, density * 34f, glowPaint);
+        }
+
+        gridPaint.setColor(getContext().getColor(
+                enabled ? R.color.touchpad_grid : R.color.touchpad_grid_disabled));
+        float step = 42f * density;
         for (float x = bounds.left + step; x < bounds.right; x += step) {
-            canvas.drawLine(x, bounds.top + density * 12f, x, bounds.bottom - density * 12f, gridPaint);
+            canvas.drawLine(x, bounds.top + density * 12f, x, bounds.bottom - density * 12f,
+                    gridPaint);
         }
         for (float y = bounds.top + step; y < bounds.bottom; y += step) {
-            canvas.drawLine(bounds.left + density * 12f, y, bounds.right - density * 12f, y, gridPaint);
+            canvas.drawLine(bounds.left + density * 12f, y, bounds.right - density * 12f, y,
+                    gridPaint);
         }
 
-        Paint centerPaint = gridPaint;
-        centerPaint.setColor(enabled ? Color.argb(75, 76, 214, 170) : Color.argb(30, 120, 130, 145));
-        centerPaint.setStrokeWidth(density * 2f);
+        centerPaint.setColor(colorWithAlpha(
+                getContext().getColor(enabled ? R.color.accent : R.color.text_secondary),
+                enabled ? 0.58f : 0.22f));
         float centerX = getWidth() / 2f;
         float centerY = getHeight() / 2f;
-        canvas.drawLine(centerX - density * 14f, centerY, centerX + density * 14f, centerY, centerPaint);
+        canvas.drawCircle(centerX, centerY, density * 3f, centerPaint);
+        canvas.drawCircle(centerX, centerY, density * 10f, centerPaint);
+        canvas.restore();
+
+        if (!enabled) {
+            borderPaint.setColor(getContext().getColor(R.color.outline));
+        } else if (touchActive) {
+            borderPaint.setColor(getContext().getColor(R.color.outline_focused));
+        } else {
+            borderPaint.setColor(colorWithAlpha(
+                    getContext().getColor(R.color.outline_focused),
+                    0.48f));
+        }
+        borderPaint.setStrokeWidth(density * (touchActive ? 1.6f : 1.1f));
+        canvas.drawRoundRect(bounds, radius, radius, borderPaint);
+    }
+
+    private int colorWithAlpha(int color, float alpha) {
+        return Color.argb(
+                Math.round(Color.alpha(color) * alpha),
+                Color.red(color),
+                Color.green(color),
+                Color.blue(color));
     }
 }

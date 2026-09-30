@@ -32,7 +32,7 @@ if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 
 Compress-Archive -Path $stage -DestinationPath $zip -Force
 $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-[IO.File]::WriteAllText("$zip.sha256", "$hash  LanMouse-Windows.zip`r`n", (New-Object Text.UTF8Encoding($false)))
+[IO.File]::WriteAllText("$zip.sha256", "$hash  LanMouse-Windows.zip`n", (New-Object Text.UTF8Encoding($false)))
 Remove-Item -LiteralPath $stage -Recurse -Force
 
 Write-Host "分发包: $zip"

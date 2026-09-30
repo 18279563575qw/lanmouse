@@ -1,15 +1,24 @@
 package com.example.lanmouse;
 
+import android.content.Context;
 import android.os.SystemClock;
 
 import org.json.JSONObject;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 局域网 UDP 指令客户端。
@@ -62,6 +71,7 @@ public class UdpMouseClient {
 
     private final Object stateLock = new Object();
     private final ArrayDeque<JSONObject> pendingPackets = new ArrayDeque<JSONObject>();
+    private final Context context;
     private final Listener listener;
     private final Thread worker;
 
@@ -74,7 +84,8 @@ public class UdpMouseClient {
     private boolean closed;
     private long lastErrorAt;
 
-    public UdpMouseClient(Listener listener) {
+    public UdpMouseClient(Context context, Listener listener) {
+        this.context = context.getApplicationContext();
         this.listener = listener;
         worker = new Thread(new Runnable() {
             @Override
@@ -124,7 +135,7 @@ public class UdpMouseClient {
             packet.put("dy", round3(dy));
             enqueue(packet);
         } catch (Exception ex) {
-            report("发送移动指令失败: " + describe(ex));
+            report(context.getString(R.string.udp_send_move_failed, describe(ex)));
         }
     }
 
@@ -135,7 +146,7 @@ public class UdpMouseClient {
             packet.put("action", action);
             enqueue(packet);
         } catch (Exception ex) {
-            report("发送按键指令失败: " + describe(ex));
+            report(context.getString(R.string.udp_send_button_failed, describe(ex)));
         }
     }
 
@@ -145,7 +156,7 @@ public class UdpMouseClient {
             packet.put("delta", delta);
             enqueue(packet);
         } catch (Exception ex) {
-            report("发送滚轮指令失败: " + describe(ex));
+            report(context.getString(R.string.udp_send_scroll_failed, describe(ex)));
         }
     }
 
@@ -153,7 +164,7 @@ public class UdpMouseClient {
         try {
             enqueue(base("ping"));
         } catch (Exception ex) {
-            report("发送测试请求失败: " + describe(ex));
+            report(context.getString(R.string.udp_send_ping_failed, describe(ex)));
         }
     }
 
@@ -161,6 +172,16 @@ public class UdpMouseClient {
      * 广播搜索局域网内的服务端。会阻塞当前线程，必须在非主线程调用。
      */
     public DiscoveryResult discover(int timeoutMs) {
+        return discover(timeoutMs, 8765, "");
+    }
+
+    /**
+     * 使用当前端口和已填写的主机作为补充目标进行搜索。
+     *
+     * 部分 Android/Wi-Fi 组合会丢弃 255.255.255.255 的受限广播，因此这里同时发送
+     * 到各网卡对应的子网广播地址；单播历史主机能让已知设备在广播受限时仍可被发现。
+     */
+    public DiscoveryResult discover(int timeoutMs, int preferredPort, String knownHost) {
         DatagramSocket probe = null;
         try {
             synchronized (stateLock) {
@@ -173,15 +194,18 @@ public class UdpMouseClient {
             probe.setBroadcast(true);
             int timeout = Math.max(250, timeoutMs);
             byte[] requestBytes = "{\"v\":1,\"type\":\"discover\"}".getBytes(StandardCharsets.UTF_8);
-            DatagramPacket request = new DatagramPacket(
-                    requestBytes,
-                    requestBytes.length,
-                    InetAddress.getByName("255.255.255.255"),
-                    8765);
+            List<Integer> ports = discoveryPorts(preferredPort);
+            for (InetAddress target : discoveryTargets(knownHost)) {
+                for (int targetPort : ports) {
+                    probe.send(new DatagramPacket(
+                            requestBytes,
+                            requestBytes.length,
+                            target,
+                            targetPort));
+                }
+            }
 
             long deadline = SystemClock.uptimeMillis() + timeout;
-            probe.send(request);
-
             byte[] buffer = new byte[2048];
             while (SystemClock.uptimeMillis() < deadline) {
                 int remaining = (int) Math.max(1L, deadline - SystemClock.uptimeMillis());
@@ -206,13 +230,68 @@ public class UdpMouseClient {
                 }
             }
         } catch (Exception ex) {
-            report("搜索失败: " + describe(ex));
+            report(context.getString(R.string.udp_discovery_failed, describe(ex)));
         } finally {
             if (probe != null) {
                 probe.close();
             }
         }
         return null;
+    }
+
+    private List<Integer> discoveryPorts(int preferredPort) {
+        List<Integer> ports = new ArrayList<Integer>();
+        if (preferredPort >= 1 && preferredPort <= 65535) {
+            ports.add(preferredPort);
+        }
+        if (!ports.contains(8765)) {
+            ports.add(8765);
+        }
+        return ports;
+    }
+
+    private List<InetAddress> discoveryTargets(String knownHost) {
+        Map<String, InetAddress> targets = new LinkedHashMap<String, InetAddress>();
+
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            if (interfaces != null) {
+                while (interfaces.hasMoreElements()) {
+                    NetworkInterface network = interfaces.nextElement();
+                    if (!network.isUp() || network.isLoopback()) {
+                        continue;
+                    }
+
+                    for (InterfaceAddress address : network.getInterfaceAddresses()) {
+                        InetAddress ip = address.getAddress();
+                        InetAddress broadcast = address.getBroadcast();
+                        if (ip instanceof Inet4Address
+                                && broadcast != null
+                                && !ip.isLinkLocalAddress()) {
+                            targets.put(broadcast.getHostAddress(), broadcast);
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            // 部分系统不允许枚举全部网卡；受限广播和已知主机仍可作为回退。
+        }
+
+        try {
+            InetAddress limitedBroadcast = InetAddress.getByName("255.255.255.255");
+            targets.put(limitedBroadcast.getHostAddress(), limitedBroadcast);
+        } catch (Exception ignored) {
+        }
+
+        if (knownHost != null && knownHost.trim().length() > 0) {
+            try {
+                InetAddress knownAddress = InetAddress.getByName(knownHost.trim());
+                targets.put(knownAddress.getHostAddress(), knownAddress);
+            } catch (Exception ignored) {
+            }
+        }
+
+        return new ArrayList<InetAddress>(targets.values());
     }
 
     public void close() {
@@ -235,7 +314,7 @@ public class UdpMouseClient {
         try {
             localSocket = new DatagramSocket();
         } catch (Exception ex) {
-            reportCritical("无法创建 UDP Socket: " + describe(ex));
+            reportCritical(context.getString(R.string.udp_socket_create_failed, describe(ex)));
             return;
         }
 
@@ -312,7 +391,10 @@ public class UdpMouseClient {
             resolved = InetAddress.getByName(config.host);
         } catch (Exception ex) {
             markNotReady();
-            reportCritical("无法解析地址 " + config.host + ": " + describe(ex));
+            reportCritical(context.getString(
+                    R.string.udp_resolve_failed,
+                    config.host,
+                    describe(ex)));
             return;
         }
 
@@ -348,11 +430,17 @@ public class UdpMouseClient {
             }
 
             markNotReady();
-            reportCritical("Windows 端没有响应 " + config.host + ":" + config.port
-                    + "。请确认服务端仍在运行、端口和令牌正确，并允许防火墙通过 UDP。");
+            reportCritical(context.getString(
+                    R.string.udp_no_response,
+                    config.host,
+                    config.port));
         } catch (Exception ex) {
             markNotReady();
-            reportCritical("连接 " + config.host + ":" + config.port + " 失败: " + describe(ex));
+            reportCritical(context.getString(
+                    R.string.udp_connect_failed,
+                    config.host,
+                    config.port,
+                    describe(ex)));
         }
     }
 
@@ -420,7 +508,7 @@ public class UdpMouseClient {
             byte[] bytes = packet.toString().getBytes(StandardCharsets.UTF_8);
             localSocket.send(new DatagramPacket(bytes, bytes.length, target, targetPort));
         } catch (Exception ex) {
-            report("发送指令失败: " + describe(ex));
+            report(context.getString(R.string.udp_send_failed, describe(ex)));
         }
     }
 
@@ -474,7 +562,7 @@ public class UdpMouseClient {
         if (name == null || name.length() == 0) {
             name = ex.getClass().getName();
         }
-        return name + "（系统未提供详细信息）";
+        return context.getString(R.string.exception_without_details, name);
     }
 
     /** 高频错误（例如丢包）限流上报，避免刷屏。 */

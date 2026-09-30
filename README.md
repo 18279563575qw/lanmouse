@@ -19,6 +19,8 @@
 | 双指上下滑动 | 滚轮 |
 
 - 指针灵敏度调节
+- 深色专业工具风界面，连接状态、输入框和操作按钮有明确视觉层级
+- 震动反馈开关：左键、右键、长按拖动和滚动使用系统精细触感，默认开启
 - 自动搜索局域网内的服务端（UDP 8765 广播）
 - 连接确认：收到服务端 `pong` 才显示“已连接”，令牌错误、端口不对、防火墙拦截都有可读提示
 - 服务端 5 秒无数据自动释放按键，降低断线后左键卡住的风险
@@ -192,17 +194,24 @@ UDP 上的 UTF-8 JSON，默认端口 `8765`。控制包都带 `v`、`type`、`to
 
 | 文件 | 大小 | SHA-256 |
 | --- | --- | --- |
-| `dist/LanMouse-debug.apk` | 39,984 B | `9d09e5c66a380241d6b60e425804bcff4f0cb52a99d98b624eaa41f390624a6d` |
-| `dist/LanMouse-Windows.zip` | 39,869 B | `394ac2e71fad6b257b4212d74424185bc8b52efddf0ee263e81e396b9dc037af` |
+| `dist/LanMouse-debug.apk` | 42,967 B | `3f80688809712490aaf99681506861d1e03c6a93f0cb165c856c7fc4114e76fa` |
+| `dist/LanMouse-Windows.zip` | 52,333 B | `cc7c7f1d8c8871aa905a4b51ec2561f9fd20febc091326ee6c6d29e815502ce1` |
 
 重新构建后请同步更新此表；两个 `.sha256` 文件与产物同名，可直接用于校验。
 
 ## 更新日志
 
-### Unreleased
+### 1.1.0
+
+**Added**
+
+- Android：重做深色界面，连接表单、状态提示、按钮、灵敏度和触控板均使用统一的深色视觉体系。
+- Android：新增自适应应用图标、旧版回退图标和 Android 13+ 主题图标。
+- Android：新增默认开启的“震动反馈”开关；左键、右键、长按拖动和滚动分别使用系统精细触感，偏好设置会持久保存。
 
 **Fixed**
 
+- Android：修复部分 Wi-Fi 环境丢弃 `255.255.255.255` 广播后“搜索 Windows 设备”找不到服务端、但手工填写 IP 可以连接的问题。发现请求现在会同时发送到各网卡的子网广播地址、受限广播地址，以及当前已填写的主机；有自定义端口时也会优先探测该端口。
 - Android：修复发送指令时状态栏显示“发送移动指令失败: null”的问题。原因是触控板回调运行在主线程，而 `UdpMouseClient` 在主线程调用 `DatagramSocket.send()` / `InetAddress.getByName()`，触发 `NetworkOnMainThreadException`，该异常没有 message，于是被拼成了“null”。
   - `UdpMouseClient` 新增后台发送线程 `LanMouse-Sender`，地址解析与收发全部移出主线程；指令改为写入上限 256 的队列，队列满时丢弃最旧的移动包，避免延迟累积。
   - 连接改为异步：后台解析地址并发送 `ping`，1.5 秒内收到 `pong` 才回调 `onReady`；失败回调 `onError` 并给出可读提示（令牌错误、端口不对、防火墙拦截均可区分）。
@@ -210,7 +219,7 @@ UDP 上的 UTF-8 JSON，默认端口 `8765`。控制包都带 `v`、`type`、`to
 - Android：`TouchpadView` 被禁用时补发左键抬起，避免拖动过程中被中断导致左键一直按下。
 - 构建：`android/build-debug.ps1` 不再同时设置 `ANDROID_PREFS_ROOT`，否则 AGP 8.7 会因 `AndroidLocationsException` 而构建失败。
 
-**Added**
+**Distribution**
 
 - Windows：新增 `allow-firewall.ps1` / `allow-firewall.bat`，一键添加防火墙规则；当前网络被系统归类为“公用网络”时会提示并询问是否临时放行。
 - 新增 `dist/LanMouse-Windows.zip` 免安装分发包与面向使用者的中文说明。
@@ -222,4 +231,3 @@ UDP 上的 UTF-8 JSON，默认端口 `8765`。控制包都带 `v`、`type`、`to
 ## 许可证
 
 [MIT](LICENSE) © 2026 Jay
-

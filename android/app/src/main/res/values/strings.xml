@@ -1,4 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">LanMouse</string>
+    <string name="app_subtitle">局域网 Android 触控板</string>
+    <string name="section_connection">连接 Windows</string>
+    <string name="hint_host">Windows 局域网 IP</string>
+    <string name="hint_port">端口</string>
+    <string name="hint_token">认证令牌</string>
+    <string name="action_discover">搜索 Windows 设备</string>
+    <string name="action_apply">应用并启用触控板</string>
+    <string name="section_touchpad">触控板设置</string>
+    <string name="label_sensitivity">指针灵敏度</string>
+    <string name="label_haptics">震动反馈</string>
+    <string name="sensitivity_value">%1$.2fx</string>
+    <string name="gesture_hint">单指移动 · 轻触左键 · 长按拖动 · 双指轻触右键 · 双指上下滚动</string>
+    <string name="status_initial">请先填写 Windows 端显示的 IP，然后点击“应用并启用触控板”。</string>
+    <string name="status_searching">正在搜索同一局域网内的 Windows 设备…</string>
+    <string name="status_not_found">没有发现服务端。请确认 Windows 端已启动、双方在同一局域网，且防火墙允许 UDP 8765。</string>
+    <string name="status_discovered">已发现 %1$s，请确认令牌后点击“应用并启用触控板”。</string>
+    <string name="error_host_required">请填写 Windows 端的局域网 IP。</string>
+    <string name="error_port_format">端口格式不正确。</string>
+    <string name="error_port_range">端口必须在 1–65535 之间。</string>
+    <string name="error_token_required">令牌不能为空；Windows 端若关闭认证，可填写任意文本。</string>
+    <string name="status_connecting">正在连接 %1$s:%2$d…</string>
+    <string name="status_connected">已连接 %1$s:%2$d（UDP），可以开始使用触控板。</string>
+    <string name="touchpad_content_description">触控板。单指移动，轻触左键，长按拖动，双指轻触右键，双指滚动。</string>
+    <string name="udp_send_move_failed">发送移动指令失败：%1$s</string>
+    <string name="udp_send_button_failed">发送按键指令失败：%1$s</string>
+    <string name="udp_send_scroll_failed">发送滚轮指令失败：%1$s</string>
+    <string name="udp_send_ping_failed">发送测试请求失败：%1$s</string>
+    <string name="udp_discovery_failed">搜索失败：%1$s</string>
+    <string name="udp_socket_create_failed">无法创建 UDP Socket：%1$s</string>
+    <string name="udp_resolve_failed">无法解析地址 %1$s：%2$s</string>
+    <string name="udp_no_response">Windows 端没有响应 %1$s:%2$d。请确认服务端仍在运行、端口和令牌正确，并允许防火墙通过 UDP。</string>
+    <string name="udp_connect_failed">连接 %1$s:%2$d 失败：%3$s</string>
+    <string name="udp_send_failed">发送指令失败：%1$s</string>
+    <string name="exception_without_details">%1$s（系统未提供详细信息）</string>
 </resources>

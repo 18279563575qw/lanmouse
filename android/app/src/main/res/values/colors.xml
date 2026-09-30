@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#0A0F15</color>
+    <color name="surface">#131B24</color>
+    <color name="surface_elevated">#1A2430</color>
+    <color name="outline">#2A3846</color>
+    <color name="outline_focused">#3DD9A5</color>
+    <color name="text_primary">#F4F8FC</color>
+    <color name="text_secondary">#9BABBC</color>
+    <color name="accent">#3DD9A5</color>
+    <color name="accent_on">#07241C</color>
+    <color name="error">#FF6B78</color>
+    <color name="ripple_light">#24FFFFFF</color>
+    <color name="ripple_accent">#2E3DD9A5</color>
+    <color name="touchpad">#0F171F</color>
+    <color name="touchpad_disabled">#10151B</color>
+    <color name="touchpad_grid">#1F7F95A8</color>
+    <color name="touchpad_grid_disabled">#124E5D6B</color>
+    <color name="icon_background">#10221D</color>
+</resources>
