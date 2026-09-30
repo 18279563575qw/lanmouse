@@ -80,5 +80,4 @@
   LanMouseServer.exe   服务端本体，.NET Framework 4.x，Win10/11 自带
   run.ps1              启动脚本，可改端口 / 令牌
   build.ps1 + src\     源码和编译脚本（想自己重新编译时用）
-  setup-firewall.ps1   用管理员 PowerShell 手动添加防火墙规则的脚本
   android-apk\         手机端 APK（朋友已经有 App 的话可以删掉这个文件夹）

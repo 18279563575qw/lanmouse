@@ -120,10 +120,6 @@ public class UdpMouseClient {
         }
     }
 
-    public boolean isConfigured() {
-        return isReady();
-    }
-
     public void move(float dx, float dy) {
         if (Math.abs(dx) < 0.01f && Math.abs(dy) < 0.01f) {
             return;
@@ -157,14 +153,6 @@ public class UdpMouseClient {
             enqueue(packet);
         } catch (Exception ex) {
             report(context.getString(R.string.udp_send_scroll_failed, describe(ex)));
-        }
-    }
-
-    public void ping() {
-        try {
-            enqueue(base("ping"));
-        } catch (Exception ex) {
-            report(context.getString(R.string.udp_send_ping_failed, describe(ex)));
         }
     }
 

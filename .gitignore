@@ -3,13 +3,15 @@ android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
+android/keystore.properties
+android/*.jks
+android/*.keystore
 .gradle/
 build/
 *.iml
 .idea/
 *.log
 
-# 说明：windows/LanMouseServer.exe、dist/ 下的 APK 和 zip 是刻意保留的已编译产物，
-# 方便朋友直接下载；如果你只想上传源码，取消下面两行的注释再提交。
-# windows/LanMouseServer.exe
-# dist/
+# 发布产物由构建脚本生成，并作为 GitHub Release 附件上传。
+windows/LanMouseServer.exe
+dist/

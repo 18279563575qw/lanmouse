@@ -35,16 +35,15 @@
 │  ├─ build.ps1                用系统自带 csc.exe 编译
 │  ├─ run.ps1                  启动脚本，可改端口 / 令牌
 │  ├─ start-server.bat         双击启动
-│  ├─ setup-firewall.ps1       添加入站防火墙规则（需管理员）
 │  ├─ allow-firewall.ps1/.bat  一键放行防火墙（自动请求管理员权限）
 │  ├─ package.ps1              组装 dist/LanMouse-Windows.zip
 │  ├─ 使用说明-分发包.txt       打包进分发包的使用者说明
-│  └─ LanMouseServer.exe       已编译产物
+│  └─ LanMouseServer.exe       本地编译产物（不入库）
 ├─ android/                    Android 工程（Java，无第三方依赖）
 │  ├─ app/src/main/…           源码与 AndroidManifest
-│  ├─ build-debug.ps1          命令行构建脚本
+│  ├─ build-debug.ps1          命令行构建脚本（支持 -Release）
 │  └─ settings.gradle
-└─ dist/                       已编译的分发包
+└─ dist/                       本地生成的分发包（不入库）
    ├─ LanMouse-debug.apk
    ├─ LanMouse-debug.apk.sha256
    ├─ LanMouse-Windows.zip     电脑端免安装分发包（含手机端 APK）
@@ -68,7 +67,7 @@
 
 ```powershell
 cd windows
-.\setup-firewall.ps1 -Port 8765
+.\allow-firewall.ps1 -Port 8765
 ```
 
 修改端口或令牌：
@@ -81,10 +80,10 @@ cd windows
 
 ### 2. 手机端（Android 6.0+）
 
-安装 `dist/LanMouse-debug.apk`：
+从 [GitHub Releases](https://github.com/TAo-1022/lanmouse/releases) 下载并安装 `LanMouse-debug.apk`，或使用本地构建产物：
 
 ```bash
-adb install -r dist/LanMouse-debug.apk
+adb install -r android\app\build\outputs\apk\debug\app-debug.apk
 ```
 
 也可以把 APK 传到手机点击安装（需允许“安装未知来源的应用”）。然后：
@@ -93,7 +92,7 @@ adb install -r dist/LanMouse-debug.apk
 2. 端口填 `8765`，令牌填 `lanmouse`（与服务端保持一致）；
 3. 点“应用并启用触控板”，状态栏显示“已连接 …”后即可使用。
 
-> 该 APK 使用 Android Debug 签名，适合自用与内网测试，不适合上架应用商店。
+> `v1.1.0` 发布包使用 Android Debug 签名；从后续版本开始可使用 `keystore.properties` 生成稳定签名的 Release APK。
 
 ### 3. 免安装分发包（推荐转发给他人）
 
@@ -107,7 +106,6 @@ LanMouse-Windows/
 ├─ LanMouseServer.exe
 ├─ run.ps1
 ├─ build.ps1 + src/        源码与编译脚本
-├─ setup-firewall.ps1
 ├─ 使用说明-先看这个.txt    面向使用者的步骤与排错
 └─ android-apk/            手机端 APK
 ```
@@ -142,6 +140,14 @@ cd android
 
 产物：`android/app/build/outputs/apk/debug/app-debug.apk`。
 `android/local.properties` 由脚本自动生成（记录本机 SDK 路径），已在 `.gitignore` 中忽略。
+
+正式签名构建需要先复制 `android/keystore.properties.example` 为 `android/keystore.properties`，填写 Keystore 路径、密码和别名，然后执行：
+
+```powershell
+.\build-debug.ps1 -Release
+```
+
+产物：`android/app/build/outputs/apk/release/app-release.apk`。`keystore.properties` 和密钥文件不会提交到 Git。
 
 ## 协议
 
@@ -190,16 +196,26 @@ UDP 上的 UTF-8 JSON，默认端口 `8765`。控制包都带 `v`、`type`、`to
 - [ ] 多台设备同时连接
 - 当前仍需人工确认 IP：自动发现可用，但多网卡 / 跨网段环境需要手动填写
 
-## 分发包校验
+## v1.1.0 Release 校验
 
 | 文件 | 大小 | SHA-256 |
 | --- | --- | --- |
-| `dist/LanMouse-debug.apk` | 42,967 B | `3f80688809712490aaf99681506861d1e03c6a93f0cb165c856c7fc4114e76fa` |
-| `dist/LanMouse-Windows.zip` | 52,333 B | `cc7c7f1d8c8871aa905a4b51ec2561f9fd20febc091326ee6c6d29e815502ce1` |
+| `LanMouse-debug.apk` | 42,967 B | `3f80688809712490aaf99681506861d1e03c6a93f0cb165c856c7fc4114e76fa` |
+| `LanMouse-Windows.zip` | 52,333 B | `cc7c7f1d8c8871aa905a4b51ec2561f9fd20febc091326ee6c6d29e815502ce1` |
 
-重新构建后请同步更新此表；两个 `.sha256` 文件与产物同名，可直接用于校验。
+正式产物统一发布到 GitHub Releases；本地构建仍会在 `dist/` 生成同名 `.sha256` 文件。
 
 ## 更新日志
+
+### Unreleased
+
+**Changed**
+
+- 清理未使用的 Android 网络状态权限、公开方法和界面字段。
+- 合并重复的 Gradle 版本入口，删除未使用的 Wrapper 配置。
+- 停止在 Git 中跟踪 APK、ZIP 和服务端 exe，发布产物统一由 GitHub Releases 管理。
+- 合并防火墙脚本并移除功能重复的 `setup-firewall.ps1`。
+- Android 新增正式签名构建配置，支持通过 `keystore.properties` 生成 Release APK。
 
 ### 1.1.0
 

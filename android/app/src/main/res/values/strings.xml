@@ -27,7 +27,6 @@
     <string name="udp_send_move_failed">发送移动指令失败：%1$s</string>
     <string name="udp_send_button_failed">发送按键指令失败：%1$s</string>
     <string name="udp_send_scroll_failed">发送滚轮指令失败：%1$s</string>
-    <string name="udp_send_ping_failed">发送测试请求失败：%1$s</string>
     <string name="udp_discovery_failed">搜索失败：%1$s</string>
     <string name="udp_socket_create_failed">无法创建 UDP Socket：%1$s</string>
     <string name="udp_resolve_failed">无法解析地址 %1$s：%2$s</string>

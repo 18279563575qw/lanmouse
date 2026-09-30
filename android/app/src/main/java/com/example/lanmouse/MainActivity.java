@@ -44,7 +44,6 @@ public class MainActivity extends Activity implements UdpMouseClient.Listener {
     private TextView sensitivityText;
     private SeekBar sensitivitySeekBar;
     private Button discoverButton;
-    private Switch hapticSwitch;
     private boolean hapticsEnabled = true;
 
     @Override
@@ -238,7 +237,7 @@ public class MainActivity extends Activity implements UdpMouseClient.Listener {
                 hapticLabel,
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        hapticSwitch = new Switch(this);
+        Switch hapticSwitch = new Switch(this);
         hapticSwitch.setShowText(false);
         hapticSwitch.setChecked(hapticsEnabled);
         hapticSwitch.setThumbTintList(new ColorStateList(

@@ -1,6 +1,15 @@
-﻿$ErrorActionPreference = "Stop"
+﻿param(
+    [switch]$Release
+)
+
+$ErrorActionPreference = "Stop"
 $projectRoot = $PSScriptRoot
 $workspaceRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot "..\.."))
+$gradleVersion = "8.9"
+
+if ($Release -and -not (Test-Path -LiteralPath (Join-Path $projectRoot "keystore.properties"))) {
+    throw "正式构建需要 android\keystore.properties；请参考 keystore.properties.example 配置签名。"
+}
 
 $sdkCandidates = @(
     (Join-Path $workspaceRoot "Android\Sdk"),
@@ -26,13 +35,21 @@ $propertiesPath = Join-Path $projectRoot "local.properties"
 $escapedSdk = $sdk.Replace("\", "\\").Replace(":", "\:")
 [IO.File]::WriteAllText($propertiesPath, "sdk.dir=$escapedSdk`r`n", (New-Object Text.UTF8Encoding($false)))
 
-& (Join-Path $projectRoot "bootstrap-gradle.ps1")
+& (Join-Path $projectRoot "bootstrap-gradle.ps1") -Version $gradleVersion
 
-$gradleBat = Join-Path $workspaceRoot ".gradle\lanmouse-gradle\gradle-8.9\bin\gradle.bat"
-& $gradleBat --no-daemon :app:assembleDebug
+$gradleBat = Join-Path $workspaceRoot ".gradle\lanmouse-gradle\gradle-$gradleVersion\bin\gradle.bat"
+if ($Release) {
+    $gradleTask = ":app:assembleRelease"
+    $apkPath = Join-Path $projectRoot "app\build\outputs\apk\release\app-release.apk"
+} else {
+    $gradleTask = ":app:assembleDebug"
+    $apkPath = Join-Path $projectRoot "app\build\outputs\apk\debug\app-debug.apk"
+}
+
+& $gradleBat --no-daemon $gradleTask
 if ($LASTEXITCODE -ne 0) {
     throw "APK 构建失败，退出码: $LASTEXITCODE"
 }
 
 Write-Host ""
-Write-Host "APK: $(Join-Path $projectRoot 'app\build\outputs\apk\debug\app-debug.apk')"
+Write-Host "APK: $apkPath"
