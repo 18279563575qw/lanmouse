@@ -214,6 +214,12 @@ UDP 上的 UTF-8 JSON，默认端口 `8765`。控制包都带 `v`、`type`、`to
 
 ## 更新日志
 
+### Unreleased
+
+**Changed**
+
+- 构建：在 `android/app/build.gradle` 中显式指定 `buildToolsVersion '35.0.0'`，干净构建不再自动下载 34.0.0；产物与 1.2.0 完全一致（同一个 SHA-256）。
+
 ### 1.2.0
 
 **Changed**
