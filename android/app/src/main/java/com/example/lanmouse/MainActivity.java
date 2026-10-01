@@ -261,7 +261,7 @@ public class MainActivity extends Activity implements UdpMouseClient.Listener {
         controls.addView(touchpadSettingsCard, topMarginParams(dp(10)));
 
         LinearLayout.LayoutParams controlsParams =
-                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.56f);
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.44f);
         root.addView(controlsScroll, controlsParams);
 
         touchpadView = new TouchpadView(this);
@@ -285,7 +285,7 @@ public class MainActivity extends Activity implements UdpMouseClient.Listener {
             }
         });
         LinearLayout.LayoutParams touchpadParams =
-                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.44f);
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.56f);
         touchpadParams.setMargins(0, dp(10), 0, 0);
         root.addView(touchpadView, touchpadParams);
         touchpadView.setEnabled(false);

@@ -27,7 +27,6 @@ public class TouchpadView extends View {
     private final Paint backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint centerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF bounds = new RectF();
     private final Path clipPath = new Path();
@@ -85,8 +84,6 @@ public class TouchpadView extends View {
         borderPaint.setStrokeWidth(Math.max(1f, density));
         gridPaint.setStyle(Paint.Style.STROKE);
         gridPaint.setStrokeWidth(Math.max(1f, density));
-        centerPaint.setStyle(Paint.Style.STROKE);
-        centerPaint.setStrokeWidth(Math.max(1f, density));
     }
 
     public void setListener(Listener listener) {
@@ -353,13 +350,6 @@ public class TouchpadView extends View {
                     gridPaint);
         }
 
-        centerPaint.setColor(colorWithAlpha(
-                getContext().getColor(enabled ? R.color.accent : R.color.text_secondary),
-                enabled ? 0.58f : 0.22f));
-        float centerX = getWidth() / 2f;
-        float centerY = getHeight() / 2f;
-        canvas.drawCircle(centerX, centerY, density * 3f, centerPaint);
-        canvas.drawCircle(centerX, centerY, density * 10f, centerPaint);
         canvas.restore();
 
         if (!enabled) {
